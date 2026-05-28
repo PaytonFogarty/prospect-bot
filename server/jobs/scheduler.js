@@ -4,11 +4,19 @@ const { runPipeline } = require('./runner');
 // Map of customerId -> cron job
 const activeJobs = new Map();
 
-const SCHEDULE_CRON = {
-  daily: '0 9 * * *',           // Every day at 9 AM
-  weekdays: '0 9 * * 1-5',     // Weekdays at 9 AM
-  weekly: '0 9 * * 1',         // Every Monday at 9 AM
+const DAY_MAP = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
 };
+
+function buildCronExpression(schedule) {
+  const { days, time } = schedule;
+  if (!days || days.length === 0) return null;
+
+  const [hour, minute] = (time || '08:00').split(':').map(Number);
+  const dayNumbers = days.map(d => DAY_MAP[d]).filter(n => n !== undefined).join(',');
+
+  return `${minute} ${hour} * * ${dayNumbers}`;
+}
 
 function registerSchedule(customerId, schedule) {
   // Remove existing job if any
@@ -17,9 +25,9 @@ function registerSchedule(customerId, schedule) {
     activeJobs.delete(customerId);
   }
 
-  const cronExpression = SCHEDULE_CRON[schedule];
+  const cronExpression = buildCronExpression(schedule);
   if (!cronExpression) {
-    console.error(`Unknown schedule type: ${schedule}`);
+    console.error(`No valid schedule days for customer ${customerId}`);
     return;
   }
 
@@ -33,27 +41,40 @@ function registerSchedule(customerId, schedule) {
   });
 
   activeJobs.set(customerId, job);
-  console.log(`Registered ${schedule} schedule for customer ${customerId}`);
+  console.log(`Registered schedule for customer ${customerId}: ${cronExpression}`);
 }
 
 function unregisterSchedule(customerId) {
   if (activeJobs.has(customerId)) {
     activeJobs.get(customerId).stop();
     activeJobs.delete(customerId);
+    console.log(`Unregistered schedule for customer ${customerId}`);
   }
 }
 
 /**
- * On startup, load all active customers with schedules and register their cron jobs.
- * Call this after DB is ready.
+ * On startup, load all customers with auto_run_enabled and register their cron jobs.
  */
-async function initSchedules(db) {
-  // TODO: Query all customers with active subscriptions and configured schedules
-  // const customers = await db.query('SELECT c.id, cc.schedule FROM customers c JOIN customer_configs cc ON c.id = cc.customer_id WHERE c.subscription_status IN ($1, $2)', ['active', 'trialing']);
-  // for (const customer of customers.rows) {
-  //   registerSchedule(customer.id, customer.schedule);
-  // }
-  console.log('Scheduler initialized');
+async function initSchedules(pool) {
+  try {
+    const result = await pool.query(
+      `SELECT c.id, cc.schedule_days, cc.schedule_time
+       FROM customers c
+       JOIN customer_configs cc ON c.id = cc.customer_id
+       WHERE c.subscription_status = 'active'
+         AND cc.run_mode = 'automatic'
+         AND cc.auto_run_enabled = true`
+    );
+    for (const row of result.rows) {
+      registerSchedule(row.id, {
+        days: row.schedule_days,
+        time: row.schedule_time,
+      });
+    }
+    console.log(`Scheduler initialized: ${result.rows.length} active schedules`);
+  } catch (err) {
+    console.error('Failed to initialize schedules:', err);
+  }
 }
 
 module.exports = { registerSchedule, unregisterSchedule, initSchedules };

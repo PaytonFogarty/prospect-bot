@@ -6,17 +6,20 @@ CREATE TABLE customers (
   password_hash TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days'),
-  subscription_status TEXT DEFAULT 'trialing',
+  subscription_status TEXT DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE customer_configs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+  customer_id UUID UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
   icp_rules JSONB DEFAULT '[]'::jsonb,
-  schedule TEXT DEFAULT 'daily',
   sequence_id TEXT,
+  run_mode TEXT DEFAULT 'manual',
+  auto_run_enabled BOOLEAN DEFAULT false,
+  schedule_days TEXT[] DEFAULT ARRAY[]::TEXT[],
+  schedule_time TEXT DEFAULT '08:00',
+  prospects_per_run INTEGER DEFAULT 50,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

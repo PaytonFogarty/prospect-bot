@@ -24,8 +24,7 @@ router.post('/signup', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-    const customer = await createCustomer(email, passwordHash, trialEndsAt);
+    const customer = await createCustomer(email, passwordHash);
 
     const token = jwt.sign(
       { id: customer.id, email: customer.email },
@@ -39,7 +38,6 @@ router.post('/signup', async (req, res) => {
         id: customer.id,
         email: customer.email,
         subscription_status: customer.subscription_status,
-        trial_ends_at: customer.trial_ends_at,
       },
     });
   } catch (err) {
@@ -78,7 +76,6 @@ router.post('/login', async (req, res) => {
         id: customer.id,
         email: customer.email,
         subscription_status: customer.subscription_status,
-        trial_ends_at: customer.trial_ends_at,
       },
     });
   } catch (err) {

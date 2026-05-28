@@ -15,10 +15,10 @@ async function getCustomerByEmail(email) {
   return result.rows[0];
 }
 
-async function createCustomer(email, passwordHash, trialEndsAt) {
+async function createCustomer(email, passwordHash) {
   const result = await pool.query(
-    'INSERT INTO customers (email, password_hash, trial_ends_at) VALUES ($1, $2, $3) RETURNING id, email, subscription_status, trial_ends_at, created_at',
-    [email, passwordHash, trialEndsAt]
+    'INSERT INTO customers (email, password_hash) VALUES ($1, $2) RETURNING id, email, subscription_status, created_at',
+    [email, passwordHash]
   );
   return result.rows[0];
 }

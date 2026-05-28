@@ -24,10 +24,7 @@ export default function Signup() {
     <div style={{ maxWidth: 400, margin: '4rem auto', padding: '0 1rem' }}>
       <div className="card">
         <h1 style={{ marginBottom: '0.5rem' }}>ProspectBot</h1>
-        <p style={{ color: '#6b7280', marginBottom: '0.25rem' }}>Create your account</p>
-        <p style={{ color: '#16a34a', fontSize: '0.875rem', marginBottom: '1.5rem', fontWeight: 600 }}>
-          14-day free trial — no credit card required
-        </p>
+        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Create your account</p>
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="form-group">
@@ -51,7 +48,7 @@ export default function Signup() {
           {error && <p className="error mb-2">{error}</p>}
 
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-            Start Free Trial
+            Get Started
           </button>
         </form>
 
