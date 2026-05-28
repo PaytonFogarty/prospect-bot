@@ -74,14 +74,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 router.get('/status', verifyToken, async (req, res) => {
   try {
     const customer = await getCustomer(req.customer.id);
-    const trialDaysLeft = customer.trial_ends_at
-      ? Math.max(0, Math.ceil((new Date(customer.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))
-      : 0;
 
     res.json({
       subscriptionStatus: customer.subscription_status,
-      trialDaysLeft,
-      trialEndsAt: customer.trial_ends_at,
       plan: 'ProspectBot',
       price: 149,
     });
