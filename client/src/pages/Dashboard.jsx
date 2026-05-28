@@ -1,22 +1,18 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import PlanBadge from '../components/PlanBadge';
 import RunLogRow from '../components/RunLogRow';
 
 export default function Dashboard() {
   const [customer, setCustomer] = useState(null);
-  const [billing, setBilling] = useState(null);
   const [pipelineStatus, setPipelineStatus] = useState(null);
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
     Promise.all([
       api.get('/auth/me'),
-      api.get('/billing/status'),
       api.get('/pipeline/status'),
-    ]).then(([me, bill, pipeline]) => {
+    ]).then(([me, pipeline]) => {
       setCustomer(me.data);
-      setBilling(bill.data);
       setPipelineStatus(pipeline.data);
     }).catch(console.error);
   }, []);
@@ -25,7 +21,6 @@ export default function Dashboard() {
     setRunning(true);
     try {
       await api.post('/pipeline/run');
-      // Refresh status after a short delay
       setTimeout(async () => {
         const res = await api.get('/pipeline/status');
         setPipelineStatus(res.data);
@@ -44,30 +39,16 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex-between mb-2">
-        <h1>Dashboard</h1>
-        <PlanBadge status={billing?.subscriptionStatus} />
-      </div>
-
-      <div className="card">
-        <p>Welcome back, <strong>{customer.email}</strong></p>
-        {billing?.subscriptionStatus === 'trialing' && (
-          <p className="mt-1" style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-            {billing.trialDaysLeft} days left in your free trial
-          </p>
-        )}
-      </div>
+      <h1 className="mb-2">Dashboard</h1>
 
       <div className="card">
         <div className="flex-between">
           <div>
-            <h3>Pipeline</h3>
-            {lastRun ? (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+            <p>Welcome back, <strong>{customer.email}</strong></p>
+            {lastRun && (
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
                 Last run: {new Date(lastRun.started_at).toLocaleString()} — {lastRun.prospects_pushed} pushed, {lastRun.prospects_skipped_dedup} skipped
               </p>
-            ) : (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>No runs yet</p>
             )}
           </div>
           <button className="btn btn-primary" onClick={handleRunNow} disabled={running}>
