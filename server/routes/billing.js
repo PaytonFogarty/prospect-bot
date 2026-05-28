@@ -82,6 +82,8 @@ router.get('/status', verifyToken, async (req, res) => {
       subscriptionStatus: customer.subscription_status,
       trialDaysLeft,
       trialEndsAt: customer.trial_ends_at,
+      plan: 'ProspectBot',
+      price: 149,
     });
   } catch (err) {
     console.error('Billing status error:', err);
