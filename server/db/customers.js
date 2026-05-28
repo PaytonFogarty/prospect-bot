@@ -1,6 +1,9 @@
 const { Pool } = require('pg');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
 async function getCustomer(id) {
   const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
@@ -12,10 +15,10 @@ async function getCustomerByEmail(email) {
   return result.rows[0];
 }
 
-async function createCustomer(email, passwordHash) {
+async function createCustomer(email, passwordHash, trialEndsAt) {
   const result = await pool.query(
-    'INSERT INTO customers (email, password_hash) VALUES ($1, $2) RETURNING id, email, subscription_status, trial_ends_at, created_at',
-    [email, passwordHash]
+    'INSERT INTO customers (email, password_hash, trial_ends_at) VALUES ($1, $2, $3) RETURNING id, email, subscription_status, trial_ends_at, created_at',
+    [email, passwordHash, trialEndsAt]
   );
   return result.rows[0];
 }

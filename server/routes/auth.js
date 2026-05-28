@@ -14,13 +14,18 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
     const existing = await getCustomerByEmail(email);
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const customer = await createCustomer(email, passwordHash);
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const customer = await createCustomer(email, passwordHash, trialEndsAt);
 
     const token = jwt.sign(
       { id: customer.id, email: customer.email },
@@ -28,7 +33,15 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({ token, customer: { id: customer.id, email: customer.email } });
+    res.status(201).json({
+      token,
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        subscription_status: customer.subscription_status,
+        trial_ends_at: customer.trial_ends_at,
+      },
+    });
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -59,7 +72,15 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ token, customer: { id: customer.id, email: customer.email } });
+    res.json({
+      token,
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        subscription_status: customer.subscription_status,
+        trial_ends_at: customer.trial_ends_at,
+      },
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Internal server error' });
