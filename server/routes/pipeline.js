@@ -1,8 +1,7 @@
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
 const { checkSubscription } = require('../middleware/trialCheck');
-const { runPipeline } = require('../jobs/runner');
-const { getLastRun, getRunsByCustomer } = require('../db/runs');
+const { runPipeline, runRefresh } = require('../jobs/runner');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -15,25 +14,163 @@ const router = express.Router();
 router.use(verifyToken);
 router.use(checkSubscription);
 
-// POST /pipeline/run — manual trigger
-router.post('/run', async (req, res) => {
+// GET /pipeline/configs — all prospect configs for this customer
+router.get('/configs', async (req, res) => {
   try {
-    const summary = await runPipeline(req.customer.id);
-    res.json(summary);
+    const result = await pool.query(
+      'SELECT * FROM prospect_configs WHERE customer_id = $1 ORDER BY created_at DESC',
+      [req.customer.id]
+    );
+    res.json(result.rows);
   } catch (err) {
-    console.error('Pipeline trigger error:', err);
+    console.error('Get configs error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /pipeline/status
-router.get('/status', async (req, res) => {
+// POST /pipeline/configs — create a new config
+router.post('/configs', async (req, res) => {
   try {
-    const lastRun = await getLastRun(req.customer.id);
-    const recentRuns = await getRunsByCustomer(req.customer.id, 5);
-    res.json({ lastRun, recentRuns });
+    const { name, keywords, includeCompanies, excludeCompanies, locations, industries, assignedDays, runTime, prospectsPerRun, autoRunEnabled } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Config name is required' });
+    }
+    if (!keywords || keywords.length === 0) {
+      return res.status(400).json({ error: 'At least one keyword is required' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO prospect_configs (customer_id, name, keywords, include_companies, exclude_companies, locations, industries, assigned_days, run_time, prospects_per_run, auto_run_enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING *`,
+      [
+        req.customer.id,
+        name.trim(),
+        keywords,
+        includeCompanies || [],
+        excludeCompanies || [],
+        locations || [],
+        industries || [],
+        assignedDays || [],
+        runTime || '08:00',
+        prospectsPerRun || 50,
+        autoRunEnabled ?? false,
+      ]
+    );
+
+    // Register schedule if auto-run enabled
+    if (autoRunEnabled && assignedDays && assignedDays.length > 0) {
+      const { registerSchedule } = require('../jobs/scheduler');
+      registerSchedule(result.rows[0].id, {
+        days: assignedDays,
+        time: runTime || '08:00',
+        customerId: req.customer.id,
+      });
+    }
+
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('Pipeline status error:', err);
+    console.error('Create config error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /pipeline/configs/:id — update a config
+router.put('/configs/:id', async (req, res) => {
+  try {
+    const { name, keywords, includeCompanies, excludeCompanies, locations, industries, assignedDays, runTime, prospectsPerRun, autoRunEnabled } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Config name is required' });
+    }
+    if (!keywords || keywords.length === 0) {
+      return res.status(400).json({ error: 'At least one keyword is required' });
+    }
+
+    const result = await pool.query(
+      `UPDATE prospect_configs SET
+         name = $1, keywords = $2, include_companies = $3, exclude_companies = $4,
+         locations = $5, industries = $6, assigned_days = $7, run_time = $8,
+         prospects_per_run = $9, auto_run_enabled = $10, updated_at = NOW()
+       WHERE id = $11 AND customer_id = $12
+       RETURNING *`,
+      [
+        name.trim(),
+        keywords,
+        includeCompanies || [],
+        excludeCompanies || [],
+        locations || [],
+        industries || [],
+        assignedDays || [],
+        runTime || '08:00',
+        prospectsPerRun || 50,
+        autoRunEnabled ?? false,
+        req.params.id,
+        req.customer.id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Config not found' });
+    }
+
+    // Update schedule
+    const { registerSchedule, unregisterSchedule } = require('../jobs/scheduler');
+    if (autoRunEnabled && assignedDays && assignedDays.length > 0) {
+      registerSchedule(req.params.id, {
+        days: assignedDays,
+        time: runTime || '08:00',
+        customerId: req.customer.id,
+      });
+    } else {
+      unregisterSchedule(req.params.id);
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Update config error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /pipeline/configs/:id — delete a config
+router.delete('/configs/:id', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM prospect_configs WHERE id = $1 AND customer_id = $2',
+      [req.params.id, req.customer.id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Config not found' });
+    }
+    const { unregisterSchedule } = require('../jobs/scheduler');
+    unregisterSchedule(req.params.id);
+    res.json({ message: 'Config deleted' });
+  } catch (err) {
+    console.error('Delete config error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /pipeline/configs/:id/run — manually run a specific config
+router.post('/configs/:id/run', async (req, res) => {
+  try {
+    const summary = await runPipeline(req.customer.id, req.params.id);
+    res.json(summary);
+  } catch (err) {
+    console.error('Pipeline run error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /pipeline/refresh — trigger prospect refresh
+router.post('/refresh', async (req, res) => {
+  try {
+    const summary = await runRefresh(req.customer.id);
+    res.json(summary);
+  } catch (err) {
+    console.error('Refresh error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -42,11 +179,11 @@ router.get('/status', async (req, res) => {
 router.get('/runs', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, started_at, completed_at, prospects_searched, prospects_filtered,
-              prospects_skipped_dedup, prospects_enriched, prospects_pushed,
-              status, error_message
-       FROM run_logs WHERE customer_id = $1
-       ORDER BY started_at DESC LIMIT 20`,
+      `SELECT rl.*, pc.name as config_name
+       FROM run_logs rl
+       LEFT JOIN prospect_configs pc ON rl.config_id = pc.id
+       WHERE rl.customer_id = $1
+       ORDER BY rl.started_at DESC LIMIT 20`,
       [req.customer.id]
     );
     res.json(result.rows);
@@ -56,92 +193,17 @@ router.get('/runs', async (req, res) => {
   }
 });
 
-// GET /pipeline/config
-router.get('/config', async (req, res) => {
+// GET /pipeline/refresh-logs — last 20 refresh logs
+router.get('/refresh-logs', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM customer_configs WHERE customer_id = $1',
+      `SELECT * FROM refresh_logs WHERE customer_id = $1
+       ORDER BY started_at DESC LIMIT 20`,
       [req.customer.id]
     );
-    const config = result.rows[0];
-    if (!config) {
-      return res.json({
-        icpRules: [],
-        sequenceId: null,
-        runMode: 'manual',
-        autoRunEnabled: false,
-        scheduleDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-        scheduleTime: '08:00',
-        prospectsPerRun: 50,
-      });
-    }
-    res.json({
-      icpRules: config.icp_rules || [],
-      sequenceId: config.sequence_id,
-      runMode: config.run_mode,
-      autoRunEnabled: config.auto_run_enabled,
-      scheduleDays: config.schedule_days || [],
-      scheduleTime: config.schedule_time,
-      prospectsPerRun: config.prospects_per_run,
-    });
+    res.json(result.rows);
   } catch (err) {
-    console.error('Get config error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// PUT /pipeline/config
-router.put('/config', async (req, res) => {
-  try {
-    const {
-      icpRules,
-      sequenceId,
-      runMode,
-      autoRunEnabled,
-      scheduleDays,
-      scheduleTime,
-      prospectsPerRun,
-    } = req.body;
-
-    const result = await pool.query(
-      `INSERT INTO customer_configs (customer_id, icp_rules, sequence_id, run_mode, auto_run_enabled, schedule_days, schedule_time, prospects_per_run, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-       ON CONFLICT (customer_id) DO UPDATE SET
-         icp_rules = COALESCE($2, customer_configs.icp_rules),
-         sequence_id = $3,
-         run_mode = COALESCE($4, customer_configs.run_mode),
-         auto_run_enabled = COALESCE($5, customer_configs.auto_run_enabled),
-         schedule_days = COALESCE($6, customer_configs.schedule_days),
-         schedule_time = COALESCE($7, customer_configs.schedule_time),
-         prospects_per_run = COALESCE($8, customer_configs.prospects_per_run),
-         updated_at = NOW()
-       RETURNING *`,
-      [
-        req.customer.id,
-        JSON.stringify(icpRules || []),
-        sequenceId || null,
-        runMode || 'manual',
-        autoRunEnabled ?? false,
-        scheduleDays || [],
-        scheduleTime || '08:00',
-        prospectsPerRun || 50,
-      ]
-    );
-
-    // Re-register schedule if automatic
-    const { registerSchedule, unregisterSchedule } = require('../jobs/scheduler');
-    if (runMode === 'automatic' && autoRunEnabled) {
-      registerSchedule(req.customer.id, {
-        days: scheduleDays || [],
-        time: scheduleTime || '08:00',
-      });
-    } else {
-      unregisterSchedule(req.customer.id);
-    }
-
-    res.json({ message: 'Config updated' });
-  } catch (err) {
-    console.error('Update config error:', err);
+    console.error('Get refresh logs error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { runPipeline } = require('./runner');
 
-// Map of customerId -> cron job
+// Map of configId -> cron job
 const activeJobs = new Map();
 
 const DAY_MAP = {
@@ -18,60 +18,65 @@ function buildCronExpression(schedule) {
   return `${minute} ${hour} * * ${dayNumbers}`;
 }
 
-function registerSchedule(customerId, schedule) {
-  // Remove existing job if any
-  if (activeJobs.has(customerId)) {
-    activeJobs.get(customerId).stop();
-    activeJobs.delete(customerId);
+/**
+ * Register a cron job for a specific prospect config.
+ * schedule: { days, time, customerId }
+ */
+function registerSchedule(configId, schedule) {
+  if (activeJobs.has(configId)) {
+    activeJobs.get(configId).stop();
+    activeJobs.delete(configId);
   }
 
   const cronExpression = buildCronExpression(schedule);
   if (!cronExpression) {
-    console.error(`No valid schedule days for customer ${customerId}`);
+    console.error(`No valid schedule days for config ${configId}`);
     return;
   }
 
+  const { customerId } = schedule;
   const job = cron.schedule(cronExpression, async () => {
-    console.log(`Scheduled pipeline run for customer ${customerId}`);
+    console.log(`Scheduled pipeline run for config ${configId}`);
     try {
-      await runPipeline(customerId);
+      await runPipeline(customerId, configId);
     } catch (err) {
-      console.error(`Scheduled run failed for customer ${customerId}:`, err);
+      console.error(`Scheduled run failed for config ${configId}:`, err);
     }
   });
 
-  activeJobs.set(customerId, job);
-  console.log(`Registered schedule for customer ${customerId}: ${cronExpression}`);
+  activeJobs.set(configId, job);
+  console.log(`Registered schedule for config ${configId}: ${cronExpression}`);
 }
 
-function unregisterSchedule(customerId) {
-  if (activeJobs.has(customerId)) {
-    activeJobs.get(customerId).stop();
-    activeJobs.delete(customerId);
-    console.log(`Unregistered schedule for customer ${customerId}`);
+function unregisterSchedule(configId) {
+  if (activeJobs.has(configId)) {
+    activeJobs.get(configId).stop();
+    activeJobs.delete(configId);
+    console.log(`Unregistered schedule for config ${configId}`);
   }
 }
 
 /**
- * On startup, load all customers with auto_run_enabled and register their cron jobs.
+ * On startup, load all prospect_configs with auto_run_enabled and register cron jobs.
  */
 async function initSchedules(pool) {
   try {
     const result = await pool.query(
-      `SELECT c.id, cc.schedule_days, cc.schedule_time
-       FROM customers c
-       JOIN customer_configs cc ON c.id = cc.customer_id
+      `SELECT pc.id, pc.customer_id, pc.assigned_days, pc.run_time
+       FROM prospect_configs pc
+       JOIN customers c ON pc.customer_id = c.id
        WHERE c.subscription_status = 'active'
-         AND cc.run_mode = 'automatic'
-         AND cc.auto_run_enabled = true`
+         AND pc.auto_run_enabled = true
+         AND array_length(pc.assigned_days, 1) > 0`
     );
     for (const row of result.rows) {
       registerSchedule(row.id, {
-        days: row.schedule_days,
-        time: row.schedule_time,
+        days: row.assigned_days,
+        time: row.run_time,
+        customerId: row.customer_id,
       });
     }
-    console.log(`Scheduler initialized: ${result.rows.length} active schedules`);
+    console.log(`Scheduler initialized: ${result.rows.length} active config schedules`);
   } catch (err) {
     console.error('Failed to initialize schedules:', err);
   }
