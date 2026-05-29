@@ -18,10 +18,8 @@ router.use(checkSubscription);
 // POST /pipeline/run — manual trigger
 router.post('/run', async (req, res) => {
   try {
-    runPipeline(req.customer.id).catch(err => {
-      console.error(`Pipeline run failed for customer ${req.customer.id}:`, err);
-    });
-    res.json({ message: 'Pipeline run started' });
+    const summary = await runPipeline(req.customer.id);
+    res.json(summary);
   } catch (err) {
     console.error('Pipeline trigger error:', err);
     res.status(500).json({ error: 'Internal server error' });

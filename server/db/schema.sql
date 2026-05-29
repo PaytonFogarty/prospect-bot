@@ -49,6 +49,16 @@ CREATE TABLE run_logs (
   error_message TEXT
 );
 
+CREATE TABLE pushed_prospects (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+  linkedin_url TEXT,
+  email TEXT,
+  pushed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE INDEX idx_run_logs_customer ON run_logs(customer_id, started_at DESC);
 CREATE INDEX idx_integrations_customer ON customer_integrations(customer_id);
 CREATE INDEX idx_configs_customer ON customer_configs(customer_id);
+CREATE INDEX idx_pushed_customer_linkedin ON pushed_prospects(customer_id, linkedin_url);
+CREATE INDEX idx_pushed_customer_email ON pushed_prospects(customer_id, email);
