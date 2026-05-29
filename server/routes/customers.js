@@ -1,36 +1,30 @@
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
-const { checkSubscription } = require('../middleware/trialCheck');
-const { getCustomer, getCustomerWithIntegrations, saveIntegration, deleteIntegration } = require('../db/customers');
+const { encrypt } = require('../utils/crypto');
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
 const router = express.Router();
 
 router.use(verifyToken);
-router.use(checkSubscription);
-
-// GET /customer/profile
-router.get('/profile', async (req, res) => {
-  try {
-    const customer = await getCustomer(req.customer.id);
-    const { password_hash, ...safe } = customer;
-    res.json(safe);
-  } catch (err) {
-    console.error('Get profile error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// PUT /customer/profile
-router.put('/profile', async (req, res) => {
-  // TODO: update customer profile fields
-  res.json({ message: 'Profile updated' });
-});
 
 // GET /customer/integrations
 router.get('/integrations', async (req, res) => {
   try {
-    const customer = await getCustomerWithIntegrations(req.customer.id);
-    res.json(customer.integrations || []);
+    const result = await pool.query(
+      'SELECT tool_name, created_at FROM customer_integrations WHERE customer_id = $1',
+      [req.customer.id]
+    );
+    const integrations = result.rows.map(row => ({
+      toolName: row.tool_name,
+      connected: true,
+      connectedAt: row.created_at,
+    }));
+    res.json(integrations);
   } catch (err) {
     console.error('Get integrations error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -44,18 +38,40 @@ router.post('/integrations', async (req, res) => {
     if (!toolName || !apiKey) {
       return res.status(400).json({ error: 'toolName and apiKey are required' });
     }
-    const integration = await saveIntegration(req.customer.id, toolName, apiKey);
-    res.status(201).json(integration);
+
+    const validTools = ['lusha', 'apollo', 'hunter', 'outreach', 'hubspot', 'salesforce'];
+    if (!validTools.includes(toolName)) {
+      return res.status(400).json({ error: 'Invalid tool name' });
+    }
+
+    const encrypted = encrypt(apiKey);
+
+    await pool.query(
+      `INSERT INTO customer_integrations (customer_id, tool_name, api_key_encrypted)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (customer_id, tool_name) DO UPDATE SET
+         api_key_encrypted = $3,
+         created_at = NOW()`,
+      [req.customer.id, toolName, encrypted]
+    );
+
+    res.status(201).json({ toolName, connected: true });
   } catch (err) {
     console.error('Save integration error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// DELETE /customer/integrations/:id
-router.delete('/integrations/:id', async (req, res) => {
+// DELETE /customer/integrations/:toolName
+router.delete('/integrations/:toolName', async (req, res) => {
   try {
-    await deleteIntegration(req.customer.id, req.params.id);
+    const result = await pool.query(
+      'DELETE FROM customer_integrations WHERE customer_id = $1 AND tool_name = $2',
+      [req.customer.id, req.params.toolName]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Integration not found' });
+    }
     res.json({ message: 'Integration removed' });
   } catch (err) {
     console.error('Delete integration error:', err);
