@@ -7,20 +7,8 @@ async function checkSubscription(req, res, next) {
       return res.status(401).json({ error: 'Customer not found' });
     }
 
-    const { subscription_status, trial_ends_at } = customer;
-
-    if (subscription_status === 'active') {
+    if (customer.subscription_status === 'active') {
       return next();
-    }
-
-    if (subscription_status === 'trialing') {
-      if (new Date(trial_ends_at) > new Date()) {
-        return next();
-      }
-      return res.status(402).json({
-        error: 'Trial expired',
-        message: 'Your 14-day free trial has ended. Please subscribe to continue.',
-      });
     }
 
     return res.status(402).json({
