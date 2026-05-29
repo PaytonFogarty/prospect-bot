@@ -68,6 +68,7 @@ export default function Setup() {
   const [editing, setEditing] = useState(null); // null = list view, 'new' = new form, configId = editing
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [runningId, setRunningId] = useState(null);
   const [runResult, setRunResult] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,10 +101,12 @@ export default function Setup() {
 
   const startNew = () => {
     setForm({ ...EMPTY_FORM });
+    setFormErrors({});
     setEditing('new');
   };
 
   const startEdit = (config) => {
+    setFormErrors({});
     setForm({
       name: config.name,
       keywords: config.keywords || [],
@@ -122,18 +125,39 @@ export default function Setup() {
   const cancelEdit = () => { setEditing(null); };
 
   const handleSave = async () => {
+    console.log('handleSave called, form state:', JSON.stringify(form, null, 2));
+
+    // Client-side validation
+    const errors = {};
+    if (!form.name || !form.name.trim()) {
+      errors.name = 'Config name is required';
+    }
+    if (!form.keywords || form.keywords.length === 0) {
+      errors.keywords = 'Add at least one keyword';
+    }
+    if (Object.keys(errors).length > 0) {
+      console.log('Validation failed:', errors);
+      setFormErrors(errors);
+      return;
+    }
+
+    setFormErrors({});
     setSaving(true);
     try {
       if (editing === 'new') {
-        await api.post('/pipeline/configs', form);
+        console.log('Creating new config...');
+        const res = await api.post('/pipeline/configs', form);
+        console.log('Created:', res.data);
       } else {
-        await api.put(`/pipeline/configs/${editing}`, form);
+        console.log('Updating config:', editing);
+        const res = await api.put(`/pipeline/configs/${editing}`, form);
+        console.log('Updated:', res.data);
       }
       setEditing(null);
       await fetchConfigs();
     } catch (err) {
       console.error('Save failed:', err);
-      alert(err.response?.data?.error || 'Save failed');
+      setFormErrors({ save: err.response?.data?.error || 'Save failed' });
     }
     setSaving(false);
   };
@@ -196,14 +220,18 @@ export default function Setup() {
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <h3 style={{ marginBottom: '1rem' }}>{editing === 'new' ? 'New Config' : 'Edit Config'}</h3>
 
+          {formErrors.save && <p className="error mb-2">{formErrors.save}</p>}
+
           <div className="form-group">
             <label>Config Name</label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Quant Traders NYC" />
+            <input value={form.name} onChange={e => { setForm({ ...form, name: e.target.value }); setFormErrors(e => ({ ...e, name: undefined })); }} placeholder="e.g. Quant Traders NYC" style={formErrors.name ? { borderColor: '#dc2626' } : {}} />
+            {formErrors.name && <p className="error">{formErrors.name}</p>}
           </div>
 
           <div className="form-group">
             <label>Keywords</label>
-            <TagInput value={form.keywords} onChange={v => setForm({ ...form, keywords: v })} placeholder="e.g. quant researcher, quant trader" />
+            <TagInput value={form.keywords} onChange={v => { setForm({ ...form, keywords: v }); setFormErrors(e => ({ ...e, keywords: undefined })); }} placeholder="e.g. quant researcher, quant trader" />
+            {formErrors.keywords && <p className="error">{formErrors.keywords}</p>}
           </div>
 
           <div className="form-group">
