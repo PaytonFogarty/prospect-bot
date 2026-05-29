@@ -1,41 +1,49 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import RunLogRow from '../components/RunLogRow';
+
+const STATUS_COLORS = {
+  success: '#16a34a',
+  error: '#dc2626',
+  running: '#d97706',
+};
 
 export default function Dashboard() {
   const [customer, setCustomer] = useState(null);
-  const [pipelineStatus, setPipelineStatus] = useState(null);
+  const [runs, setRuns] = useState([]);
   const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState(null);
 
-  useEffect(() => {
+  const fetchData = () => {
     Promise.all([
       api.get('/auth/me'),
-      api.get('/pipeline/status'),
-    ]).then(([me, pipeline]) => {
+      api.get('/pipeline/runs'),
+    ]).then(([me, runsRes]) => {
       setCustomer(me.data);
-      setPipelineStatus(pipeline.data);
+      setRuns(Array.isArray(runsRes.data) ? runsRes.data.slice(0, 5) : []);
     }).catch(console.error);
-  }, []);
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   const handleRunNow = async () => {
     setRunning(true);
+    setRunResult(null);
     try {
-      await api.post('/pipeline/run');
-      setTimeout(async () => {
-        const res = await api.get('/pipeline/status');
-        setPipelineStatus(res.data);
-        setRunning(false);
-      }, 2000);
+      const res = await api.post('/pipeline/run');
+      const summary = res.data;
+      if (summary.status === 'success') {
+        setRunResult({ type: 'success', message: `${summary.pushed} prospect${summary.pushed !== 1 ? 's' : ''} pushed to CRM` });
+      } else {
+        setRunResult({ type: 'error', message: summary.error || 'Pipeline run failed' });
+      }
+      fetchData();
     } catch (err) {
-      console.error('Run failed:', err);
-      setRunning(false);
+      setRunResult({ type: 'error', message: err.response?.data?.error || 'Pipeline run failed' });
     }
+    setRunning(false);
   };
 
   if (!customer) return <p>Loading...</p>;
-
-  const lastRun = pipelineStatus?.lastRun;
-  const recentRuns = pipelineStatus?.recentRuns || [];
 
   return (
     <div>
@@ -43,39 +51,53 @@ export default function Dashboard() {
 
       <div className="card">
         <div className="flex-between">
-          <div>
-            <p>Welcome back, <strong>{customer.email}</strong></p>
-            {lastRun && (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                Last run: {new Date(lastRun.started_at).toLocaleString()} — {lastRun.prospects_pushed} pushed, {lastRun.prospects_skipped_dedup} skipped
-              </p>
-            )}
-          </div>
+          <p>Welcome back, <strong>{customer.email}</strong></p>
           <button className="btn btn-primary" onClick={handleRunNow} disabled={running}>
             {running ? 'Running...' : 'Run Now'}
           </button>
         </div>
+        {runResult && (
+          <div style={{
+            marginTop: '0.75rem',
+            padding: '0.5rem 0.75rem',
+            borderRadius: 6,
+            background: runResult.type === 'success' ? '#f0fdf4' : '#fef2f2',
+            color: runResult.type === 'success' ? '#16a34a' : '#dc2626',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+          }}>
+            {runResult.message}
+          </div>
+        )}
       </div>
 
       <div className="card">
         <h3 style={{ marginBottom: '0.75rem' }}>Recent Runs</h3>
-        {recentRuns.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No runs yet. Configure your ICP filters and connect your tools to get started.</p>
+        {runs.length === 0 ? (
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+            No runs yet. Configure your ICP filters and connect your tools to get started.
+          </p>
         ) : (
           <table>
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Searched</th>
-                <th>Filtered</th>
-                <th>Skipped</th>
-                <th>Enriched</th>
                 <th>Pushed</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {recentRuns.map(run => <RunLogRow key={run.id} run={run} />)}
+              {runs.map(run => (
+                <tr key={run.id}>
+                  <td>{new Date(run.started_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>{run.prospects_pushed}</td>
+                  <td>
+                    <span style={{ color: STATUS_COLORS[run.status] || '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>
+                      {run.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

@@ -38,6 +38,24 @@ router.get('/status', async (req, res) => {
   }
 });
 
+// GET /pipeline/runs — last 20 run logs
+router.get('/runs', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, started_at, completed_at, prospects_searched, prospects_filtered,
+              prospects_skipped_dedup, prospects_enriched, prospects_pushed,
+              status, error_message
+       FROM run_logs WHERE customer_id = $1
+       ORDER BY started_at DESC LIMIT 20`,
+      [req.customer.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Get runs error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /pipeline/config
 router.get('/config', async (req, res) => {
   try {
