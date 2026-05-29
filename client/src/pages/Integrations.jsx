@@ -31,13 +31,14 @@ export default function Integrations() {
   const loadIntegrations = async () => {
     try {
       const res = await api.get('/customer/integrations');
-      setIntegrations(res.data);
+      const data = res.data;
+      setIntegrations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load integrations:', err);
     }
   };
 
-  const isConnected = (toolName) => integrations.some(i => i.toolName === toolName);
+  const isConnected = (toolName) => Array.isArray(integrations) && integrations.some(i => i.toolName === toolName);
 
   const connectApiKey = async (toolName) => {
     const key = apiKeys[toolName];
