@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductDemo from '../components/ProductDemo';
+import RefreshDemo from '../components/RefreshDemo';
 import './Landing.css';
 
 export default function Landing() {
@@ -97,6 +98,30 @@ export default function Landing() {
         <p style={{ color: '#8a8a9a', fontSize: '1.125rem', marginTop: '-1.5rem', marginBottom: '2.5rem' }}>From config to CRM in under 60 seconds.</p>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <ProductDemo />
+        </div>
+      </section>
+
+      {/* Contact Refresh */}
+      <section className="ln-section fade-section" ref={addRef}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#7c3aed', fontWeight: 700, marginBottom: 12 }}>Contact Refresh</div>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16, lineHeight: 1.15 }}>Your CRM data goes stale. We fix that.</h2>
+            <p style={{ color: '#8a8a9a', fontSize: '1rem', lineHeight: 1.7, marginBottom: 24 }}>
+              ProspectBot scans your existing contacts and fills in missing emails, phones, and refreshes outdated info — automatically.
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {['Email addresses', 'Direct phone numbers', 'Job titles', 'Company changes'].map(item => (
+                <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.9375rem' }}>
+                  <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: '0.875rem' }}>&#10003;</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <RefreshDemo />
+          </div>
         </div>
       </section>
 
