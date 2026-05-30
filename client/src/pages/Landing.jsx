@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ProductDemo from '../components/ProductDemo';
 import './Landing.css';
 
 export default function Landing() {
@@ -90,41 +91,12 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Solution */}
-      <section className="ln-section fade-section" ref={addRef}>
-        <div className="ln-solution">
-          <div className="ln-solution-text">
-            <h2>Set your ICP once. Let it run.</h2>
-            <p>
-              Define who you're looking for with keywords, companies, and locations.
-              ProspectBot does the rest — <span className="accent">every morning</span>, your
-              CRM has fresh qualified prospects waiting.
-            </p>
-          </div>
-          <div className="ln-mock-ui">
-            <div className="mock-label">Keywords</div>
-            <div className="mock-tags">
-              <span className="mock-tag">quant researcher</span>
-              <span className="mock-tag">quant trader</span>
-              <span className="mock-tag">portfolio manager</span>
-            </div>
-            <div className="mock-label">Locations</div>
-            <div className="mock-tags">
-              <span className="mock-tag">New York City</span>
-              <span className="mock-tag">London</span>
-              <span className="mock-tag">Chicago</span>
-            </div>
-            <div className="mock-label">Schedule</div>
-            <div className="mock-days">
-              <span className="mock-day active">Mon</span>
-              <span className="mock-day active">Tue</span>
-              <span className="mock-day active">Wed</span>
-              <span className="mock-day active">Thu</span>
-              <span className="mock-day active">Fri</span>
-              <span className="mock-day inactive">Sat</span>
-              <span className="mock-day inactive">Sun</span>
-            </div>
-          </div>
+      {/* Product Demo */}
+      <section className="ln-section fade-section" ref={addRef} style={{ textAlign: 'center' }}>
+        <h2 className="ln-section-title">Watch it work.</h2>
+        <p style={{ color: '#8a8a9a', fontSize: '1.125rem', marginTop: '-1.5rem', marginBottom: '2.5rem' }}>From config to CRM in under 60 seconds.</p>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <ProductDemo />
         </div>
       </section>
 
