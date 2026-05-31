@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductDemo from '../components/ProductDemo';
 import RefreshDemo from '../components/RefreshDemo';
+import Logo from '../components/Logo';
 import './Landing.css';
 
 export default function Landing() {
@@ -35,7 +36,7 @@ export default function Landing() {
     <div className="landing">
       {/* Navbar */}
       <nav className={`ln-nav ${scrolled ? 'scrolled' : ''}`}>
-        <a href="#" className="ln-nav-logo">Revara<span className="dot" /></a>
+        <a href="#" className="ln-nav-logo" style={{ display: 'inline-flex', textDecoration: 'none' }}><Logo /></a>
         <div className="ln-nav-links">
           <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>

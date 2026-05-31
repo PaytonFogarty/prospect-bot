@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 const EFFECTIVE_DATE = 'May 2026';
 
@@ -6,7 +7,7 @@ export default function Privacy() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to="/" style={styles.logo}>Revara</Link>
+        <Link to="/" style={styles.logo}><Logo /></Link>
       </nav>
 
       <main style={styles.content}>
@@ -113,7 +114,7 @@ const styles = {
     padding: '0 2rem',
     borderBottom: '1px solid #e5e7eb',
   },
-  logo: { fontWeight: 700, fontSize: '1.25rem', color: '#4f46e5', textDecoration: 'none' },
+  logo: { display: 'inline-flex', alignItems: 'center', textDecoration: 'none' },
   content: { maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem 5rem' },
   h1: { fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem' },
   effective: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '2rem' },
