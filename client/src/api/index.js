@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://prospect-bot-production-0b3c.up.railway.app',
+  baseURL: 'https://api.revara.ai',
   withCredentials: true,
 });
 
