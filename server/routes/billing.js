@@ -1,32 +1,50 @@
 const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { verifyToken } = require('../middleware/auth');
-const { getCustomer, updateSubscriptionStatus } = require('../db/customers');
+const {
+  getCustomer,
+  updateBillingInfo,
+  updateSubscriptionStatusByStripeCustomerId,
+} = require('../db/customers');
 
 const router = express.Router();
 
 const PRICE_ID = process.env.STRIPE_PRICE_ID; // $149/month flat price
+const PLAN_NAME = 'Revara';
+const PLAN_PRICE = 149;
 
-// POST /billing/checkout — create Stripe checkout session
+// Map Stripe subscription statuses to the ones we store.
+function mapStripeStatus(stripeStatus) {
+  switch (stripeStatus) {
+    case 'active':
+    case 'trialing':
+      return 'active';
+    case 'past_due':
+    case 'unpaid':
+    case 'incomplete':
+      return 'past_due';
+    case 'incomplete_expired':
+      return 'expired';
+    case 'canceled':
+      return 'cancelled';
+    default:
+      return 'cancelled';
+  }
+}
+
+// POST /billing/checkout — create a Stripe Checkout session for the subscription
 router.post('/checkout', verifyToken, async (req, res) => {
   try {
-    const customer = await getCustomer(req.customer.id);
-
-    let stripeCustomerId = customer.stripe_customer_id;
-    if (!stripeCustomerId) {
-      const stripeCustomer = await stripe.customers.create({ email: customer.email });
-      stripeCustomerId = stripeCustomer.id;
-      // TODO: save stripeCustomerId to customer record
-    }
-
     const session = await stripe.checkout.sessions.create({
-      customer: stripeCustomerId,
+      mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: PRICE_ID, quantity: 1 }],
-      mode: 'subscription',
-      success_url: `${process.env.CLIENT_URL}/dashboard?billing=success`,
-      cancel_url: `${process.env.CLIENT_URL}/billing?billing=cancelled`,
+      customer_email: req.customer.email,
+      // Both let the webhook map the completed session back to our customer.
+      client_reference_id: String(req.customer.id),
       metadata: { customerId: req.customer.id },
+      success_url: `${process.env.CLIENT_URL}/billing?success=true`,
+      cancel_url: `${process.env.CLIENT_URL}/billing?cancelled=true`,
     });
 
     res.json({ url: session.url });
@@ -36,8 +54,9 @@ router.post('/checkout', verifyToken, async (req, res) => {
   }
 });
 
-// POST /billing/webhook — Stripe webhook handler
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+// POST /billing/webhook — Stripe webhook handler.
+// The raw body parser is registered globally in index.js before express.json().
+router.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -48,37 +67,54 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object;
-      const customerId = session.metadata.customerId;
-      await updateSubscriptionStatus(customerId, 'active');
-      break;
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const customerId = session.metadata?.customerId || session.client_reference_id;
+        if (customerId) {
+          await updateBillingInfo(customerId, {
+            stripeCustomerId: session.customer,
+            stripeSubscriptionId: session.subscription,
+            status: 'active',
+          });
+        }
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        await updateSubscriptionStatusByStripeCustomerId(subscription.customer, 'cancelled');
+        break;
+      }
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        await updateSubscriptionStatusByStripeCustomerId(
+          subscription.customer,
+          mapStripeStatus(subscription.status)
+        );
+        break;
+      }
+      default:
+        break;
     }
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object;
-      // TODO: look up customer by stripe_subscription_id and mark expired
-      break;
-    }
-    case 'invoice.payment_failed': {
-      const invoice = event.data.object;
-      // TODO: look up customer and mark past_due
-      break;
-    }
-  }
 
-  res.json({ received: true });
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Webhook handler error:', err);
+    res.status(500).json({ error: 'Webhook handler failed' });
+  }
 });
 
-// GET /billing/status
+// GET /billing/status — current subscription state for the logged-in customer
 router.get('/status', verifyToken, async (req, res) => {
   try {
     const customer = await getCustomer(req.customer.id);
 
     res.json({
-      subscriptionStatus: customer.subscription_status,
-      plan: 'ProspectBot',
-      price: 149,
+      subscription_status: customer.subscription_status,
+      stripe_customer_id: customer.stripe_customer_id,
+      plan: PLAN_NAME,
+      price: PLAN_PRICE,
     });
   } catch (err) {
     console.error('Billing status error:', err);
@@ -86,15 +122,24 @@ router.get('/status', verifyToken, async (req, res) => {
   }
 });
 
-// POST /billing/cancel
+// POST /billing/cancel — cancel the subscription at the end of the period
 router.post('/cancel', verifyToken, async (req, res) => {
   try {
     const customer = await getCustomer(req.customer.id);
-    if (customer.stripe_subscription_id) {
-      await stripe.subscriptions.cancel(customer.stripe_subscription_id);
-      await updateSubscriptionStatus(req.customer.id, 'cancelled');
+
+    if (!customer.stripe_subscription_id) {
+      return res.status(400).json({ error: 'No active subscription found' });
     }
-    res.json({ message: 'Subscription cancelled' });
+
+    await stripe.subscriptions.update(customer.stripe_subscription_id, {
+      cancel_at_period_end: true,
+    });
+    await updateBillingInfo(req.customer.id, { status: 'cancelled' });
+
+    res.json({
+      subscription_status: 'cancelled',
+      message: 'Your subscription will cancel at the end of the billing period.',
+    });
   } catch (err) {
     console.error('Cancel error:', err);
     res.status(500).json({ error: 'Internal server error' });

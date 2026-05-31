@@ -31,6 +31,30 @@ async function updateSubscriptionStatus(id, status) {
   return result.rows[0];
 }
 
+// Update any subset of billing fields by customer id. Null args leave the
+// existing value untouched (COALESCE), so this is safe for partial updates.
+async function updateBillingInfo(id, { stripeCustomerId = null, stripeSubscriptionId = null, status = null } = {}) {
+  const result = await pool.query(
+    `UPDATE customers
+        SET stripe_customer_id = COALESCE($2, stripe_customer_id),
+            stripe_subscription_id = COALESCE($3, stripe_subscription_id),
+            subscription_status = COALESCE($4, subscription_status)
+      WHERE id = $1
+      RETURNING *`,
+    [id, stripeCustomerId, stripeSubscriptionId, status]
+  );
+  return result.rows[0];
+}
+
+// Used by webhook handlers that only know the Stripe customer id.
+async function updateSubscriptionStatusByStripeCustomerId(stripeCustomerId, status) {
+  const result = await pool.query(
+    'UPDATE customers SET subscription_status = $1 WHERE stripe_customer_id = $2 RETURNING *',
+    [status, stripeCustomerId]
+  );
+  return result.rows[0];
+}
+
 async function getCustomerWithIntegrations(id) {
   const customer = await getCustomer(id);
   if (!customer) return null;
@@ -79,6 +103,8 @@ module.exports = {
   getCustomerByEmail,
   createCustomer,
   updateSubscriptionStatus,
+  updateBillingInfo,
+  updateSubscriptionStatusByStripeCustomerId,
   getCustomerWithIntegrations,
   saveIntegration,
   deleteIntegration,
