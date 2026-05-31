@@ -1,24 +1,22 @@
-const { getCustomer } = require('../db/customers');
-
-async function checkSubscription(req, res, next) {
-  try {
-    const customer = await getCustomer(req.customer.id);
-    if (!customer) {
-      return res.status(401).json({ error: 'Customer not found' });
-    }
-
-    if (customer.subscription_status === 'active') {
-      return next();
-    }
-
-    return res.status(402).json({
-      error: 'Subscription required',
-      message: 'Please subscribe to access this feature.',
-    });
-  } catch (err) {
-    console.error('Subscription check error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+// Blocks API access for customers without an active subscription.
+// Must run AFTER verifyToken, which populates req.customer (including
+// subscription_status). Inactive/cancelled/past-due customers get a 402 with a
+// redirect hint the client uses to send them to the billing page.
+function checkSubscription(req, res, next) {
+  const customer = req.customer;
+  if (!customer) {
+    return res.status(401).json({ error: 'Not authenticated' });
   }
+
+  if (customer.subscription_status === 'active') {
+    return next();
+  }
+
+  return res.status(402).json({
+    error: 'subscription_inactive',
+    message: 'You need to subscribe to continue.',
+    redirect: '/billing',
+  });
 }
 
 module.exports = { checkSubscription };

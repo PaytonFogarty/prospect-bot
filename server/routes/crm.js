@@ -1,5 +1,6 @@
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
+const { checkSubscription } = require('../middleware/trialCheck');
 const { saveIntegration, deleteIntegration } = require('../db/customers');
 
 const router = express.Router();
@@ -29,7 +30,7 @@ const OAUTH_CONFIGS = {
 };
 
 // GET /crm/oauth/:provider — redirect to OAuth provider
-router.get('/oauth/:provider', verifyToken, (req, res) => {
+router.get('/oauth/:provider', verifyToken, checkSubscription, (req, res) => {
   const provider = req.params.provider;
   const config = OAUTH_CONFIGS[provider];
   if (!config) {
@@ -80,7 +81,7 @@ router.get('/callback/:provider', async (req, res) => {
 });
 
 // DELETE /crm/disconnect/:provider
-router.delete('/disconnect/:provider', verifyToken, async (req, res) => {
+router.delete('/disconnect/:provider', verifyToken, checkSubscription, async (req, res) => {
   try {
     await deleteIntegration(req.customer.id, req.params.provider);
     res.json({ message: `Disconnected ${req.params.provider}` });

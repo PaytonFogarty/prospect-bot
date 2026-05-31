@@ -16,8 +16,9 @@ async function getCustomerByEmail(email) {
 }
 
 async function createCustomer(email, passwordHash) {
+  // New customers start inactive — they must subscribe before accessing the app.
   const result = await pool.query(
-    'INSERT INTO customers (email, password_hash) VALUES ($1, $2) RETURNING id, email, subscription_status, created_at',
+    "INSERT INTO customers (email, password_hash, subscription_status) VALUES ($1, $2, 'inactive') RETURNING id, email, subscription_status, created_at",
     [email, passwordHash]
   );
   return result.rows[0];

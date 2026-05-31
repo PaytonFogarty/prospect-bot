@@ -1,5 +1,6 @@
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
+const { checkSubscription } = require('../middleware/trialCheck');
 const { encrypt } = require('../utils/crypto');
 const { Pool } = require('pg');
 
@@ -11,6 +12,7 @@ const pool = new Pool({
 const router = express.Router();
 
 router.use(verifyToken);
+router.use(checkSubscription);
 
 // GET /customer/integrations
 router.get('/integrations', async (req, res) => {

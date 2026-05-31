@@ -6,7 +6,7 @@ CREATE TABLE customers (
   password_hash TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  subscription_status TEXT DEFAULT 'active',
+  subscription_status TEXT DEFAULT 'inactive',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

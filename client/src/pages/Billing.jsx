@@ -20,6 +20,7 @@ export default function Billing() {
   const params = new URLSearchParams(window.location.search);
   const showSuccess = params.get('success') === 'true';
   const showCancelled = params.get('cancelled') === 'true';
+  const showSubscribeRequired = params.get('subscribe') === 'required';
 
   useEffect(() => {
     api.get('/billing/status')
@@ -74,6 +75,11 @@ export default function Billing() {
       {showCancelled && (
         <div className="card" style={{ background: '#f3f4f6', color: '#374151' }}>
           Checkout cancelled. Subscribe anytime to activate your account.
+        </div>
+      )}
+      {showSubscribeRequired && !isActive && (
+        <div className="card" style={{ background: '#fef3c7', border: '1px solid #d97706', color: '#92400e', fontWeight: 600 }}>
+          You need an active subscription to continue. Subscribe below to activate your account.
         </div>
       )}
       {error && <p className="error mb-2">{error}</p>}
