@@ -1,7 +1,7 @@
 {
-  "name": "prospectbot",
+  "name": "revara",
   "version": "1.0.0",
-  "description": "ProspectBot B2B prospecting automation SaaS",
+  "description": "Revara B2B prospecting automation SaaS",
   "scripts": {
     "install": "cd server && npm install",
     "start": "node server/index.js"

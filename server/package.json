@@ -1,7 +1,7 @@
 {
-  "name": "prospectbot-server",
+  "name": "revara-server",
   "version": "1.0.0",
-  "description": "ProspectBot B2B prospecting automation backend",
+  "description": "Revara B2B prospecting automation backend",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

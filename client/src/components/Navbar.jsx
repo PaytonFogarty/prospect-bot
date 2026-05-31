@@ -13,7 +13,7 @@ export default function Navbar() {
       <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 56 }}>
         <div className="flex gap-2" style={{ alignItems: 'center' }}>
           <Link to="/dashboard" style={{ fontWeight: 700, fontSize: '1.125rem', color: '#4f46e5', textDecoration: 'none' }}>
-            ProspectBot
+            Revara
           </Link>
           <div className="flex gap-1" style={{ marginLeft: '1.5rem' }}>
             {[

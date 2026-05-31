@@ -53,5 +53,5 @@ app.use('/billing', billingRoutes);
 app.use('/crm', crmRoutes);
 
 app.listen(PORT, () => {
-  console.log(`ProspectBot server running on port ${PORT}`);
+  console.log(`Revara server running on port ${PORT}`);
 });

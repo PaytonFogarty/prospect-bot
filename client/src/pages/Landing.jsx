@@ -35,7 +35,7 @@ export default function Landing() {
     <div className="landing">
       {/* Navbar */}
       <nav className={`ln-nav ${scrolled ? 'scrolled' : ''}`}>
-        <a href="#" className="ln-nav-logo">ProspectBot<span className="dot" /></a>
+        <a href="#" className="ln-nav-logo">Revara<span className="dot" /></a>
         <div className="ln-nav-links">
           <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
@@ -54,7 +54,7 @@ export default function Landing() {
         <div className="ln-hero-content">
           <h1>Your pipeline fills itself.</h1>
           <p className="sub">
-            ProspectBot finds, enriches, and delivers qualified prospects into your CRM — automatically. You just do outbound.
+            Revara finds, enriches, and delivers qualified prospects into your CRM — automatically. You just do outbound.
           </p>
           <div className="ln-hero-ctas">
             <Link to="/signup" className="ln-btn ln-btn-primary">Start for free</Link>
@@ -108,7 +108,7 @@ export default function Landing() {
             <div style={{ fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#7c3aed', fontWeight: 700, marginBottom: 12 }}>Contact Refresh</div>
             <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16, lineHeight: 1.15 }}>Your CRM data goes stale. We fix that.</h2>
             <p style={{ color: '#8a8a9a', fontSize: '1rem', lineHeight: 1.7, marginBottom: 24 }}>
-              ProspectBot scans your existing contacts and fills in missing emails, phones, and refreshes outdated info — automatically.
+              Revara scans your existing contacts and fills in missing emails, phones, and refreshes outdated info — automatically.
             </p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {['Email addresses', 'Direct phone numbers', 'Job titles', 'Company changes'].map(item => (
@@ -206,8 +206,8 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="ln-footer">
-        <span className="ln-nav-logo" style={{ fontSize: '0.9375rem' }}>ProspectBot<span className="dot" /></span>
-        <span>&copy; 2026 ProspectBot</span>
+        <span className="ln-nav-logo" style={{ fontSize: '0.9375rem' }}>Revara<span className="dot" /></span>
+        <span>&copy; 2026 Revara</span>
         <div className="ln-footer-links">
           <a href="#">Privacy</a>
           <a href="#">Terms</a>

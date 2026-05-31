@@ -1,4 +1,4 @@
-# ProspectBot
+# Revara
 
 B2B prospecting automation tool. Finds new prospects using your own enrichment tools (Lusha, Apollo, Hunter) and pushes them into your CRM (Outreach, HubSpot, Salesforce).
 
@@ -10,7 +10,7 @@ B2B prospecting automation tool. Finds new prospects using your own enrichment t
 2. Connect your CRM (Outreach, HubSpot, or Salesforce) via OAuth
 3. Define your Ideal Customer Profile (ICP) filters
 4. Set a schedule (daily, weekdays, or weekly) — or trigger runs manually
-5. ProspectBot searches for prospects, filters by your ICP, deduplicates against your CRM, enriches contacts, and pushes net-new prospects into your CRM sequence
+5. Revara searches for prospects, filters by your ICP, deduplicates against your CRM, enriches contacts, and pushes net-new prospects into your CRM sequence
 
 ## Local setup
 

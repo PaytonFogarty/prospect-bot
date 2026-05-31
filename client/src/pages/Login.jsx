@@ -22,7 +22,7 @@ export default function Login() {
   return (
     <div style={{ maxWidth: 400, margin: '4rem auto', padding: '0 1rem' }}>
       <div className="card">
-        <h1 style={{ marginBottom: '0.5rem' }}>ProspectBot</h1>
+        <h1 style={{ marginBottom: '0.5rem' }}>Revara</h1>
         <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Sign in to your account</p>
 
         <form onSubmit={handleSubmit(onSubmit)}>
