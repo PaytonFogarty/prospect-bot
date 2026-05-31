@@ -209,8 +209,8 @@ export default function Landing() {
         <span className="ln-nav-logo" style={{ fontSize: '0.9375rem' }}>Revara<span className="dot" /></span>
         <span>&copy; 2026 Revara</span>
         <div className="ln-footer-links">
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
         </div>
       </footer>
     </div>

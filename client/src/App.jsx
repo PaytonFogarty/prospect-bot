@@ -9,6 +9,8 @@ import Setup from './pages/Setup';
 import Integrations from './pages/Integrations';
 import RunLog from './pages/RunLog';
 import Billing from './pages/Billing';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 function SmartRedirect() {
   const token = localStorage.getItem('token');
@@ -21,6 +23,8 @@ export default function App() {
       <Route path="/" element={<SmartRedirect />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<WithNavbar />}>
           <Route path="/dashboard" element={<Dashboard />} />

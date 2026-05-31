@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import PlanBadge from '../components/PlanBadge';
 
@@ -136,6 +137,11 @@ export default function Billing() {
           >
             {working ? 'Redirecting...' : 'Subscribe Now'}
           </button>
+
+          <p style={{ marginTop: '0.75rem', textAlign: 'center', fontSize: '0.8125rem', color: '#6b7280' }}>
+            By subscribing you agree to our <Link to="/terms">Terms of Service</Link> and{' '}
+            <Link to="/privacy">Privacy Policy</Link>.
+          </p>
         </div>
       )}
     </div>
