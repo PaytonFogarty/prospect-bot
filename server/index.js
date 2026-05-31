@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(helmet());
 const allowedOrigins = [
-  'https://mindful-charm-production-81c7.up.railway.app',
+  'https://www.revara.ai',
   'http://localhost:5173',
   process.env.CLIENT_URL,
 ].filter(Boolean);
